@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KI Dashboard</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Urban Climate Twin Soest Dashboard" />
+    <meta property="og:image" content="/img/Logo.png" />
+    <meta property="og:image:alt" content="UCT Logo" />
+    <meta property="og:image:width" content="450" />
+    <meta property="og:image:height" content="127" />
+
+    <link rel="shortcut icon" href="./src/images/Logo.png" type="image/x-icon">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+    <link rel="stylesheet" href="/src/style.css">
+
+    <!-- Scripts -->
+    <script src="/env.js"></script>
+    <script src="/vendor/chartjs/chart.umd.min.js"></script>
+    <script src="/vendor/date-fns/cdn.min.js"></script>
+    <script src="/vendor/chartjs-adapter/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="/vendor/leaflet/leaflet.js"></script>
+    <script src="/vendor/hammerjs/hammer.min.js"></script>
+    <script src="/vendor/chartjs-zoom/chartjs-plugin-zoom.min.js"></script>
+</head>
+<body>
+    <nav>
+        <a class="heading" href="/">
+            <img src="src/images/Logo.png" alt="UCT Logo">
+            <h1 class="desktop">KI Korrektur Dashboard</h1>
+            <h1 class="mobile">KI Dashboard</h1>
+        </a>
+        <div id="refresh-btn" class="refresh">
+            <span class="material-symbols-outlined">refresh</span>
+            <div class="desktop">Aktualisieren</div>
+        </div>
+    </nav>
+    <div id="main">
+        <div id="toast"><span class="material-symbols-outlined">error</span><span id="toast-msg"></span></div>
+        <section id="map-card">
+            <div class="card-heading">
+                <div class="card-title">
+                    <span class="material-symbols-outlined">map</span>
+                    <h3>Karten-Ansicht</h3></div>
+            </div>
+            <div class="map-wrapper">
+                <div id="map"></div>
+                <div id="map-loader" class="map-overlay hidden">
+                    <div class="spinner">
+                        <span class="material-symbols-outlined">progress_activity</span>
+                    </div>
+                    <span>Lade Sensoren...</span>
+                </div>
+            </div>
+        </section>
+        <section id="chart-card">
+            <div class="card-heading">
+                <div class="card-title">
+                    <div class="card-title">
+                        <span class="material-symbols-outlined">area_chart</span>
+                        <h3><span id="sensor_name">Sensor auf Karte auswählen</span></h3>
+                    </div>
+                    <div id="date-controls" class="date-controls">                        
+                        <input type="date" id="datePicker" />
+                        <button id="todayBtn" class="date-btn" style="display: none;" title="Heute">Heute</button>
+                    </div>
+                    <button id="resetZoomBtn" class="mobile">Zoom zurücksetzen</button>
+                    <div id="tutorialHover">
+                        <span class="material-symbols-outlined">info</span>
+                        <div class="tutorial-text">
+                            <h4>Diagramm-Steuerung:</h4>
+                            <p><span class="material-symbols-outlined">swipe_vertical</span> Zoomen</p>
+                            <p><span class="material-symbols-outlined">swipe</span> Verschieben</p>
+                            <p><span class="material-symbols-outlined">touch_double</span> Ansicht zurücksetzen</p>
+                        </div>
+                    </div>
+                </div>
+                <div id="legend">
+                    <div id="rawTemp" class="bullet" data-index="0">
+                        <span>-</span>
+                        Roh Temp.
+                    </div>
+                    <div id="dlTemp" class="bullet" data-index="1">
+                        <span>-</span>
+                        DL Temp.
+                    </div>
+                    <div id="dwdTemp" class="bullet" data-index="4">
+                        <span>-</span>
+                        DWD Temp.
+                    </div>
+                    <div id="dwdSmooth" class="bullet" data-index="5">
+                        <span>-</span>
+                        DWD Smooth
+                    </div>
+                    <div id="KI_S1" class="bullet" data-index="2">
+                        <span>-</span>
+                        KI Temp S1
+                    </div>
+                    <div id="KI_S2" class="bullet" data-index="3">
+                        <span>-</span>
+                        KI Temp S2
+                    </div>
+                </div>
+            </div>
+            <div class="chart-wrapper">
+                <div id="chart-tutorial" class="chart-overlay">
+                    <div>
+                        <h2>Wählen Sie einen Sensor auf der Karte aus.</h2>
+                        <h4>Diagramm-Steuerung:</h4>
+                    </div>
+                    <div class="tutorial-controls">
+                        <div>
+                            <span class="material-symbols-outlined">swipe_vertical</span>
+                            Zoomen
+                        </div>
+                        <div>
+                            <span class="material-symbols-outlined">swipe</span>
+                            Verschieben
+                        </div>
+                        <div>
+                            <span class="material-symbols-outlined">touch_double</span>
+                            Ansicht zurücksetzen
+                        </div>
+                    </div>
+                </div>
+                <div id="chart-loader" class="chart-overlay hidden" style="z-index: 999;">
+                    <div class="spinner">
+                        <span class="material-symbols-outlined">progress_activity</span>
+                    </div>
+                    <span>Lade Daten...</span>
+                </div>
+                <div id="backfill-indicator" class="backfill-indicator hidden">
+                    <span class="material-symbols-outlined backfill-icon">progress_activity</span>
+                    <span>Lade ältere Daten…</span>
+                </div>
+                <div id="empty-chart" class="chart-overlay hidden" style="z-index: 998;">
+                    <span class="material-symbols-outlined">warning</span>
+                    <h2>Keine Daten verfügbar</h2>
+                </div>
+                
+                <canvas id="Chart"></canvas>
+            </div>
+            <div id="stats">
+                <div class="stat-box">
+                    <h5>Letzte</h5>
+                    <span id="stat-curr">--</span>
+                </div>
+                <div class="stat-box">
+                    <h5>Min (24h)</h5>
+                    <span id="stat-min">--</span>
+                </div>
+                <div class="stat-box">
+                    <h5>Max (24h)</h5>
+                    <span id="stat-max">--</span>
+                </div>
+            </div>
+        </section>
+    </div>
+    <div id="footer">
+        &copy; 2026 <a href="https://mitwirken-in-soest.de/projekt/urban-climate-twin/" target="_blank">Urban Climate Twin Soest</a> &middot; <a href="https://www.fh-swf.de/de/forschung___transfer_4/forschungsprojekte_1/forschungsprojekt_uct.php" target="_blank">FH Südwestfalen</a>
+         | <span id="dataSourcesBtn">Datenquellen <span class="material-symbols-outlined">info</span></span>
+        <div id="dataSourcesModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Datenquellen</h2>
+                    <span id="closeModal" class="material-symbols-outlined btn">close</span>
+                </div>
+                <div class="modal-body">
+                    <p>Die Daten des Dashboards stammen aus folgenden Quellen:</p>
+                    <ul>
+                        <li><a href="https://www.dwd.de/DE/leistungen/opendata/opendata.html" target="_blank">DWD Open Data</a></li>
+                    </ul>
+                    <p>Alle weiteren Daten werden aus den städtischen Sensoren sowie Rasterdaten bezogen.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="src/chart.config.js"></script>
+    <script src="src/chart.js"></script>
+    <script src="src/map.js"></script>
+    <script src="src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+services:
+  app:
+    image: ghcr.io/fhswf/ki-korrektur-dashboard:latest
+    container_name: sensor-dashboard
+    env_file: .env
+    ports:
+      - "6877:8443"
+    restart: always
+    volumes:
+      - ${SSL_KEYS_PATH:-./ssl}:/etc/nginx/ssl/keys:ro
